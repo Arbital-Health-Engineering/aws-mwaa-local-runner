@@ -6,5 +6,5 @@ apache-airflow-providers-ftp==3.13.0
 apache-airflow-providers-http==5.3.0
 apache-airflow-providers-imap==3.9.0
 apache-airflow-providers-postgres==6.2.0
-apache-airflow-providers-smtp==2.1.0
+apache-airflow-providers-smtp==3.0.0
 apache-airflow-providers-sqlite==4.1.0
