@@ -20,7 +20,7 @@ dnf install glibc -y
 # install system dependency to enable the installation of most Airflow extras
 dnf install -y gcc gcc-c++ cyrus-sasl-devel python3-devel python3-wheel make
 
-# Python 3.11 install
+# Python 3.12 install
 sudo mkdir python_install
 python_file=Python-$PYTHON_VERSION
 python_tar=$python_file.tar
@@ -40,35 +40,35 @@ pushd /python_install/$python_file
 make install -j $(nproc) # use -j to set the cores for the build
 popd
 
-# Upgrade pip
-pip3 install $PIP_OPTION --upgrade 'pip<23'
+# Upgrade pip, setuptools and wheel (setuptools not bundled in Python 3.12+)
+pip3 install $PIP_OPTION --upgrade pip setuptools wheel
 
 # openjdk is required for JDBC to work with Airflow
-dnf install -y java-17-amazon-corretto
+# dnf install -y java-17-amazon-corretto
 
 # Installing mariadb-devel dependency for apache-airflow-providers-mysql.
 # The mariadb-devel provided by AL2 conflicts with openssl11 which is required Python 3.10
 # so a newer version of the dependency must be installed from source.
-sudo mkdir mariadb_rpm
-sudo chown airflow /mariadb_rpm
-
-if [[ $(uname -p) == "aarch64" ]]; then
-  wget https://mirror.mariadb.org/yum/11.4/fedora38-aarch64/rpms/MariaDB-common-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
-  wget https://mirror.mariadb.org/yum/11.4/fedora38-aarch64/rpms/MariaDB-shared-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
-  wget https://mirror.mariadb.org/yum/11.4/fedora38-aarch64/rpms/MariaDB-devel-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
-else
-  wget https://mirror.mariadb.org/yum/11.4/fedora38-amd64/rpms/MariaDB-common-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
-  wget https://mirror.mariadb.org/yum/11.4/fedora38-amd64/rpms/MariaDB-shared-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
-  wget https://mirror.mariadb.org/yum/11.4/fedora38-amd64/rpms/MariaDB-devel-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
-fi
-
+# sudo mkdir mariadb_rpm
+# sudo chown airflow /mariadb_rpm
+#
+# if [[ $(uname -p) == "aarch64" ]]; then
+#   wget https://mirror.mariadb.org/yum/11.4/fedora38-aarch64/rpms/MariaDB-common-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
+#   wget https://mirror.mariadb.org/yum/11.4/fedora38-aarch64/rpms/MariaDB-shared-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
+#   wget https://mirror.mariadb.org/yum/11.4/fedora38-aarch64/rpms/MariaDB-devel-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
+# else
+#   wget https://mirror.mariadb.org/yum/11.4/fedora38-amd64/rpms/MariaDB-common-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
+#   wget https://mirror.mariadb.org/yum/11.4/fedora38-amd64/rpms/MariaDB-shared-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
+#   wget https://mirror.mariadb.org/yum/11.4/fedora38-amd64/rpms/MariaDB-devel-11.4.2-1.fc38.$(uname -p).rpm -P /mariadb_rpm
+# fi
+#
 # install mariadb_devel and its dependencies
-sudo rpm -ivh /mariadb_rpm/*
+# sudo rpm -ivh /mariadb_rpm/*
 
-sudo -u airflow pip3 install $PIP_OPTION --no-use-pep517 --constraint /constraints.txt poetry
+sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt poetry
 sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt cached-property
-sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt wheel 
-sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt --use-deprecated legacy-resolver apache-airflow[celery,statsd"${AIRFLOW_DEPS:+,}${AIRFLOW_DEPS}"]=="${AIRFLOW_VERSION}"
+sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt wheel
+sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt apache-airflow[celery,statsd"${AIRFLOW_DEPS:+,}${AIRFLOW_DEPS}"]=="${AIRFLOW_VERSION}"
 
 dnf install -y libxml2-devel libxslt-devel
 # install celery[sqs] and its dependencies
@@ -83,7 +83,7 @@ dnf install -y postgresql-devel
 sudo -u airflow pip3 install $PIP_OPTION psycopg2
 
 # install unixODBC-devel to support pyodbc
-dnf install -y unixODBC-devel
+# dnf install -y unixODBC-devel
 
 # install additional python dependencies
 if [ -n "${PYTHON_DEPS}" ]; then sudo -u airflow pip3 install $PIP_OPTION "${PYTHON_DEPS}"; fi
