@@ -1,7 +1,7 @@
 ## Note
 **Starting from Airflow version 2.9, MWAA has open-sourced the original Docker image used in production deployments. You can refer to MWAA open-source image repository at https://github.com/aws/amazon-mwaa-docker-images to create a local environment identical to that of MWAA.**
 
-Airflow 3.x versions would be suported via [amazon-mwaa-docker-images](https://github.com/aws/amazon-mwaa-docker-images) repo.
+This fork of the local-runner targets **Apache Airflow 3.2.1** (Python 3.12), matching the MWAA Airflow 3.2.1 environment. Airflow 3 replaces the `webserver` with the `api-server` (which serves both the UI and REST API on port 8080), runs the DAG processor as a standalone component, and uses the FAB auth manager for the local `admin`/`test` login. For the full production parity image, see [amazon-mwaa-docker-images](https://github.com/aws/amazon-mwaa-docker-images).
 
 # About aws-mwaa-local-runner
 

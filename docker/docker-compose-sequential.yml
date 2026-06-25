@@ -1,10 +1,12 @@
 version: "3.7"
 services:
-  webserver:
-    image: amazon/mwaa-local:2_11_0
+  local-runner:
+    image: amazon/mwaa-local:3_2_1
     restart: always
     environment:
       - LOAD_EX=n
+      # Airflow 3 removed the SequentialExecutor; this maps to LocalExecutor on SQLite
+      # (single container, no Postgres) in entrypoint.sh.
       - EXECUTOR=Sequential
     logging:
       options:
@@ -16,9 +18,9 @@ services:
       - "${PWD}/requirements:/usr/local/airflow/requirements"
     ports:
       - "8080:8080"
-    command: webserver
+    command: local-runner
     healthcheck:
-      test: ["CMD-SHELL", "[ -f /usr/local/airflow/airflow-webserver.pid ]"]
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/api/v2/monitor/health || exit 1"]
       interval: 30s
       timeout: 30s
       retries: 3

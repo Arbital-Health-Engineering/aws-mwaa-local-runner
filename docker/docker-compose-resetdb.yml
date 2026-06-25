@@ -14,7 +14,7 @@ services:
       - "${PWD}/db-data:/var/lib/postgresql/data"
 
   resetdb:
-    image: amazon/mwaa-local:2_11_0
+    image: amazon/mwaa-local:3_2_1
     depends_on:
       - postgres
     environment:

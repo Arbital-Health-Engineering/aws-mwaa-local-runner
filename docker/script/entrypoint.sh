@@ -5,8 +5,28 @@ TRY_LOOP="20"
 # Global defaults
 : "${AIRFLOW_HOME:="/usr/local/airflow"}"
 : "${AIRFLOW__CORE__FERNET_KEY:=${FERNET_KEY:=$(cat /usr/local/etc/airflow_fernet_key)}}"
-: "${AIRFLOW__CORE__EXECUTOR:=${EXECUTOR:-Sequential}Executor}"
 : "${REQUIREMENTS_FILE:="requirements/requirements.txt"}"
+
+# Airflow 3 removed the SequentialExecutor. LocalExecutor now supports SQLite (WAL mode),
+# so the legacy "Sequential" mode maps to LocalExecutor backed by SQLite (no Postgres).
+EXECUTOR_TYPE="${EXECUTOR:-Local}"
+if [ "$EXECUTOR_TYPE" = "Sequential" ]; then
+  USE_SQLITE="true"
+  : "${AIRFLOW__CORE__EXECUTOR:="LocalExecutor"}"
+else
+  USE_SQLITE="false"
+  : "${AIRFLOW__CORE__EXECUTOR:="${EXECUTOR_TYPE}Executor"}"
+fi
+
+# Airflow 3: keep the FAB auth manager so the admin/test login and the `airflow users`
+# CLI keep working (the new default SimpleAuthManager supports neither).
+: "${AIRFLOW__CORE__AUTH_MANAGER:="airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"}"
+# Airflow 3 runs the DAG processor as a standalone component (the scheduler no longer parses DAGs).
+: "${AIRFLOW__SCHEDULER__STANDALONE_DAG_PROCESSOR:="True"}"
+# Stable, shared secrets so the api-server, scheduler, triggerer and workers can validate
+# each other's JWTs / Flask sessions (all components in the container share this fernet key).
+: "${AIRFLOW__API_AUTH__JWT_SECRET:=$(cat /usr/local/etc/airflow_fernet_key)}"
+: "${AIRFLOW__API__SECRET_KEY:=$(cat /usr/local/etc/airflow_fernet_key)}"
 
 # Load DAGs examples (default: Yes)
 if [[ -z "$AIRFLOW__CORE__LOAD_EXAMPLES" && "${LOAD_EX:=n}" == n ]]; then
@@ -18,6 +38,10 @@ export \
   AIRFLOW__CORE__EXECUTOR \
   AIRFLOW__CORE__FERNET_KEY \
   AIRFLOW__CORE__LOAD_EXAMPLES \
+  AIRFLOW__CORE__AUTH_MANAGER \
+  AIRFLOW__SCHEDULER__STANDALONE_DAG_PROCESSOR \
+  AIRFLOW__API_AUTH__JWT_SECRET \
+  AIRFLOW__API__SECRET_KEY \
 
 # Install custom python package if requirements.txt is present
 install_requirements() {
@@ -75,8 +99,8 @@ execute_startup_script() {
   fi
 }
 
-# Other executors than SequentialExecutor drive the need for an SQL database, here PostgreSQL is used
-if [ "$AIRFLOW__CORE__EXECUTOR" != "SequentialExecutor" ]; then
+# A real SQL database (PostgreSQL) is used unless we are in the legacy SQLite mode.
+if [ "$USE_SQLITE" != "true" ]; then
   # Check if the user has provided explicit Airflow configuration concerning the database
   if [ -z "$AIRFLOW__DATABASE__SQL_ALCHEMY_CONN" ]; then
     # Default values corresponding to the default compose files
@@ -132,20 +156,23 @@ case "$1" in
     export AIRFLOW__CORE__LOAD_EXAMPLES="False"
 
     install_requirements
-    airflow db init
-    if [ "$AIRFLOW__CORE__EXECUTOR" = "LocalExecutor" ] || [ "$AIRFLOW__CORE__EXECUTOR" = "SequentialExecutor" ]; then
-      # With the "Local" and "Sequential" executors it should all run in one container.
+    airflow db migrate
+    if [ "$AIRFLOW__CORE__EXECUTOR" = "LocalExecutor" ]; then
+      # With the LocalExecutor everything runs in one container. Airflow 3 needs the
+      # scheduler, the standalone DAG processor and the triggerer running alongside the
+      # api-server (which replaced the webserver and now serves both the UI and REST API).
       airflow scheduler &
+      airflow dag-processor &
       airflow triggerer &
       sleep 2
     fi
     airflow users create -r Admin -u admin -e admin@example.com -f admin -l user -p $DEFAULT_PASSWORD
-    exec airflow webserver
+    exec airflow api-server
     ;;
   resetdb)
     airflow db reset -y
     sleep 2
-    airflow db init
+    airflow db migrate
     ;;
   test-requirements)
     # if S3_REQUIREMENTS_PATH
