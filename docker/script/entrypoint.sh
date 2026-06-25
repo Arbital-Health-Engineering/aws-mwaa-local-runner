@@ -151,9 +151,12 @@ case "$1" in
 
 
     execute_startup_script
-    source stored_env
+    [ -f stored_env ] && source stored_env
     export AIRFLOW_HOME="/usr/local/airflow"
     export AIRFLOW__CORE__LOAD_EXAMPLES="False"
+    # Re-assert after sourcing stored_env, which replays declare -p and can
+    # overwrite PATH with whatever the startup-script subprocess had.
+    export PATH="/usr/local/airflow/.local/bin:$PATH"
 
     install_requirements
     airflow db migrate

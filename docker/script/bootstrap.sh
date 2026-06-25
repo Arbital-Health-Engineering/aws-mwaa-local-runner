@@ -73,8 +73,8 @@ sudo -u airflow pip3 install $PIP_OPTION --constraint /constraints.txt apache-ai
 dnf install -y libxml2-devel libxslt-devel
 # install celery[sqs] and its dependencies
 dnf install -y libcurl-devel 
-# see https://stackoverflow.com/questions/49200056/pycurl-import-error-ssl-backend-mismatch
-export PYCURL_SSL_LIBRARY=openssl11
+# AL2023 ships OpenSSL 3; pycurl 7.46+ uses "openssl" (not the AL2-specific "openssl11")
+export PYCURL_SSL_LIBRARY=openssl
 sudo -u airflow pip3 install $PIP_OPTION --compile pycurl
 sudo -u airflow pip3 install $PIP_OPTION celery[sqs]
 
