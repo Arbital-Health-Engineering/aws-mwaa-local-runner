@@ -1,7 +1,7 @@
 version: "3.7"
 services:
   local-runner:
-    image: amazon/mwaa-local:3_2_1
+    image: amazon/mwaa-local:3_3_1
     restart: always
     environment:
       - LOAD_EX=n
